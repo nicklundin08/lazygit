@@ -3,11 +3,9 @@ package models
 import "path/filepath"
 
 type SubmoduleConfig struct {
-	Name string
-	Path string
-	Url  string
-	// Unsure if head is the right word here
-	// It will either be <branch> or <commit> (if detached)
+	Name                string
+	Path                string
+	Url                 string
 	Head                string
 	NumStagedChanges    int
 	NumUnstagedChanges  int

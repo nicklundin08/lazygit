@@ -15,9 +15,9 @@ func GetSubmoduleListDisplayStrings(submodules []*models.SubmoduleConfig) [][]st
 }
 
 func getSubmoduleDisplayStrings(s *models.SubmoduleConfig) []string {
-	// Arbitrarily add 30 spaces to the format. Not married to this but I just wanted it to look aligned
-	// Put the HEAD first because those are more likely to be similar lengths?
-	name := fmt.Sprintf("%-30s\t%s", s.Head,
+	// Pad right with some spaces to the end of the HEAD so that it (hopefully) aligns well.
+	// Put the HEAD first because those are more likely to be similar lengths than the repo name.
+	name := fmt.Sprintf("%-20s %s", s.Head,
 		s.Name,
 	)
 	if s.ParentModule != nil {
