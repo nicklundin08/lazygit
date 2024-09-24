@@ -54,6 +54,21 @@ func (self *SubmoduleCommands) GetConfigs(parentModule *models.SubmoduleConfig) 
 		}
 	}
 
+	// TODO: unsure if this is the best way to go about this.
+	// TODO: might be better to do a single `git submodule foreach git status` and parse the Output
+	// TODO: additionally, unsure if this will get updated or if we have to do a manual refresh
+	getSubmoduleHead := func(cmds *SubmoduleCommands, path string) (string, error) {
+		// git -C </path/to/submodule> symbolic-ref -q HEAD
+		// Output is empty in detached state
+		// Output if on a branch: refs/heads/main
+		cmdArgs := NewGitCmd("symbolic-ref").
+			Dir(path).
+			Arg("-q", "HEAD").
+			ToArgv()
+
+		return cmds.cmd.New(cmdArgs).RunWithOutput()
+	}
+
 	configs := []*models.SubmoduleConfig{}
 	lastConfigIdx := -1
 	for scanner.Scan() {
@@ -70,6 +85,14 @@ func (self *SubmoduleCommands) GetConfigs(parentModule *models.SubmoduleConfig) 
 		if lastConfigIdx != -1 {
 			if path, ok := firstMatch(line, `\s*path\s*=\s*(.*)\s*`); ok {
 				configs[lastConfigIdx].Path = path
+				head, error := getSubmoduleHead(self, path)
+				// TODO: dont hardcode these values
+				configs[lastConfigIdx].NumUnstagedChanges = 0
+				configs[lastConfigIdx].NumStagedChanges = 1
+				configs[lastConfigIdx].NumUntrackedChanges = 2
+				if error == nil {
+					configs[lastConfigIdx].Head = strings.TrimSpace(head)
+				}
 				nestedConfigs, err := self.GetConfigs(configs[lastConfigIdx])
 				if err == nil {
 					configs = append(configs, nestedConfigs...)
