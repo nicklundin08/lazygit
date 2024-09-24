@@ -29,11 +29,11 @@ func getSubmoduleDisplayStrings(s *models.SubmoduleConfig) []string {
 		name = indentation + "- " + s.Name
 	}
 
-	if s.NumStagedChanges != 0 {
+	if s.NumStagedFiles != 0 {
 		name = fmt.Sprintf(
 			"%s +%d",
 			name,
-			s.NumStagedChanges,
+			s.NumStagedFiles,
 		)
 	}
 

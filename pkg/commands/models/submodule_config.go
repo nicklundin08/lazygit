@@ -7,7 +7,7 @@ type SubmoduleConfig struct {
 	Path                string
 	Url                 string
 	Head                string
-	NumStagedChanges    int
+	NumStagedFiles      int
 	NumUnstagedChanges  int
 	NumUntrackedChanges int
 

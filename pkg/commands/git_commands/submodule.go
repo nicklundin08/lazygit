@@ -76,6 +76,40 @@ func (self *SubmoduleCommands) GetConfigs(parentModule *models.SubmoduleConfig) 
 		return head
 	}
 
+	getPorcelainStatus := func(cmds *SubmoduleCommands, path string) (int, int, int, error) {
+		cmdArgs := NewGitCmd("status").
+			Dir(path).
+			Arg("--porcelain").
+			ToArgv()
+
+		output, err := cmds.cmd.New(cmdArgs).RunWithOutput()
+		if err != nil {
+			return -1, -1, -1, err
+		}
+		lines := strings.Split(output, "\n")
+
+		stagedCount := 0
+		unstagedCount := 0
+		untrackedCount := 0
+
+		for _, line := range lines {
+			if len(line) == 0 {
+				continue
+			}
+			firstChar := line[0:1]
+			switch firstChar {
+			case " ":
+				unstagedCount++
+			case "?":
+				untrackedCount++
+			default:
+				stagedCount++
+			}
+
+		}
+		return stagedCount, unstagedCount, untrackedCount, nil
+	}
+
 	configs := []*models.SubmoduleConfig{}
 	lastConfigIdx := -1
 	for scanner.Scan() {
@@ -92,14 +126,16 @@ func (self *SubmoduleCommands) GetConfigs(parentModule *models.SubmoduleConfig) 
 		if lastConfigIdx != -1 {
 			if path, ok := firstMatch(line, `\s*path\s*=\s*(.*)\s*`); ok {
 				configs[lastConfigIdx].Path = path
-				head, error := getSubmoduleHead(self, path)
-				// TODO: dont hardcode these values
-				configs[lastConfigIdx].NumUnstagedChanges = 0
-				configs[lastConfigIdx].NumStagedChanges = 1
-				configs[lastConfigIdx].NumUntrackedChanges = 2
-				if error == nil {
+				head, err := getSubmoduleHead(self, path)
+				if err == nil {
 					formattedHead := formatSubmoduleHead(head, "refs/heads/")
 					configs[lastConfigIdx].Head = strings.TrimSpace(formattedHead)
+				}
+				stagedCount, unstagedCount, untrackedCount, err := getPorcelainStatus(self, path)
+				if err == nil {
+					configs[lastConfigIdx].NumStagedFiles = stagedCount
+					configs[lastConfigIdx].NumUnstagedChanges = unstagedCount
+					configs[lastConfigIdx].NumUntrackedChanges = untrackedCount
 				}
 				nestedConfigs, err := self.GetConfigs(configs[lastConfigIdx])
 				if err == nil {
@@ -115,7 +151,7 @@ func (self *SubmoduleCommands) GetConfigs(parentModule *models.SubmoduleConfig) 
 }
 
 func (self *SubmoduleCommands) Stash(submodule *models.SubmoduleConfig) error {
-	// if the path does not exist then it hasn't yet been initialized so we'll swallow the error
+	// if the path does not exist then it hasn''ll swallow the error
 	// because the intention here is to have no dirty worktree state
 	if _, err := os.Stat(submodule.Path); os.IsNotExist(err) {
 		self.Log.Infof("submodule path %s does not exist, returning", submodule.FullPath())
